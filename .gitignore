@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtuella miljöer
+.venv/
+.build_venv/
+env/
+venv/
+ENV/
+
+# Byggfiler
+dist/
+build/
+*.spec
+
+# Projekt-specifikt
+ytrss.db
+ytrss.db-journal
+
+# Backup-filer
+ytrss.py.*
+
+# System-specifikt
+.DS_Store
+.vscode/
+.idea/
+*.mp4
