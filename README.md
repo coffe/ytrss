@@ -56,7 +56,7 @@ All data is stored in `~/.config/ytrss/`:
 *   Python 3.8+
 *   `yt-dlp` (for fetching video durations/metadata).
 *   `wl-copy` (Wayland) or `xclip` (X11) for clipboard handling.
-*   `quicktube` (recommended for playback, but can be adapted).
+*   [`quicktube`](https://github.com/coffe/QuickTube) (recommended for playback, but can be adapted).
 
 ## 📄 License
 MIT
