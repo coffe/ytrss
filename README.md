@@ -1,22 +1,22 @@
 # ytrss 📺
 
-Ett snabbt och lättviktigt TUI-verktyg för att bläddra och titta på YouTube-prenumerationer via RSS, direkt i terminalen. Byggt för Linux med Unix-filosofin i åtanke.
+A fast and lightweight TUI tool for browsing and watching YouTube subscriptions via RSS, directly in your terminal. Built for Linux with the Unix philosophy in mind.
 
-Designad för att fungera sömlöst med [QuickTube](https://github.com/coffe/QuickTube) (eller andra videospelare).
+Designed to work seamlessly with [QuickTube](https://github.com/coffe/QuickTube) (or other video players).
 
-## ✨ Funktioner
+## ✨ Features
 
-*   **Blixtsnabb:** Hämtar alla RSS-flöden asynkront (samtidigt) vid start.
-*   **Ren TUI:** Navigera enkelt med piltangenterna och sök/filtrera genom att skriva direkt i menyn.
-*   **Shorts-hantering:** Identifierar automatiskt Shorts (< 60s) och låter dig dölja dem med ett knapptryck.
-*   **Smart:** Sparar sedda videor och cachar videolängder i en lokal SQLite-databas.
-*   **OPML-stöd:** Importera/Exportera dina prenumerationer enkelt.
-*   **Portabel:** Byggs till en enda binärfil utan beroenden.
+*   **Blazing Fast:** Fetches all RSS feeds asynchronously (concurrently) at startup.
+*   **Clean TUI:** Navigate easily with arrow keys and search/filter by typing directly in the menu.
+*   **Shorts Handling:** Automatically identifies Shorts (< 60s) and lets you toggle their visibility instantly.
+*   **Smart:** Tracks watched videos and caches video durations in a local SQLite database.
+*   **OPML Support:** Easily import/export your subscriptions.
+*   **Portable:** Builds into a single standalone binary with no dependencies.
 
 ## 🚀 Installation
 
-### Alternativ 1: Bygg från källkod (Rekommenderas)
-Du behöver bara ha Python 3 installerat.
+### Option 1: Build from Source (Recommended)
+You only need Python 3 installed.
 
 ```bash
 git clone https://github.com/coffe/ytrss.git
@@ -24,43 +24,43 @@ cd ytrss
 ./build.sh
 ```
 
-Detta skapar en körbar fil i `dist/ytrss`. Kopiera den till din `$PATH`:
+This creates an executable in `dist/ytrss`. Copy it to your `$PATH`:
 
 ```bash
-cp dist/ytrss ~/bin/  # eller /usr/local/bin/
+cp dist/ytrss ~/bin/  # or /usr/local/bin/
 ```
 
-## 🎮 Användning
+## 🎮 Usage
 
-Starta programmet:
+Start the program:
 
 ```bash
 ytrss
 ```
 
-### Kortkommandon i menyn
-*   **`Upp/Ner`**: Navigera i listan.
-*   **`Enter`**: Välj kanal eller spela upp video.
-*   **`Skriv text`**: Filtrerar listan direkt (t.ex. skriv "linux" för att bara se Linux-relaterade kanaler/videor).
-*   **`s`**: Visa/Dölj Shorts (toggle).
-*   **`a`**: Lägg till ny RSS-länk.
-*   **`d`**: Ta bort en kanal.
-*   **`q`**: Avsluta.
+### Menu Shortcuts
+*   **`Up/Down`**: Navigate the list.
+*   **`Enter`**: Select channel or play video.
+*   **`Type text`**: Filter the list instantly (e.g., type "linux" to see only Linux-related channels/videos).
+*   **`s`**: Show/Hide Shorts (toggle).
+*   **`a`**: Add a new RSS link.
+*   **`d`**: Remove a channel.
+*   **`q`**: Quit.
 
-## ⚙️ Konfiguration
-All data sparas i `~/.config/ytrss/`:
-*   `ytRss.opml`: Dina prenumerationer.
-*   `ytrss.db`: Databas med historik och metadata.
+## ⚙️ Configuration
+All data is stored in `~/.config/ytrss/`:
+*   `ytRss.opml`: Your subscriptions.
+*   `ytrss.db`: Database with history and metadata.
 
-## 🔧 Krav
+## 🔧 Requirements
 *   Python 3.8+
-*   `yt-dlp` (för att hämta videolängder/metadata).
-*   `wl-copy` (Wayland) eller `xclip` (X11) för urklippshantering.
-*   `quicktube` (rekommenderas för uppspelning, men kan anpassas).
+*   `yt-dlp` (for fetching video durations/metadata).
+*   `wl-copy` (Wayland) or `xclip` (X11) for clipboard handling.
+*   `quicktube` (recommended for playback, but can be adapted).
 
-## 📄 Licens
+## 📄 License
 MIT
 
 ---
 
-**⚠️ Ansvarsfriskrivning:** Detta projekt är skapat enbart i utbildningssyfte. Det är inte avsett att användas för att ladda ner upphovsrättsskyddat material utan tillåtelse eller för att bryta mot YouTubes användarvillkor. Använd verktyget ansvarsfullt.
+**⚠️ Disclaimer:** This project is created for educational purposes only. It is not intended to be used for downloading copyrighted material without permission or for violating YouTube's Terms of Service. Please use this tool responsibly.
