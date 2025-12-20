@@ -60,3 +60,7 @@ All data sparas i `~/.config/ytrss/`:
 
 ## 📄 Licens
 MIT
+
+---
+
+**⚠️ Ansvarsfriskrivning:** Detta projekt är skapat enbart i utbildningssyfte. Det är inte avsett att användas för att ladda ner upphovsrättsskyddat material utan tillåtelse eller för att bryta mot YouTubes användarvillkor. Använd verktyget ansvarsfullt.
