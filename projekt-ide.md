@@ -1,46 +1,46 @@
-# Projekt: YT-RSS Discovery (Feeder till QuickTube)
+# Project: YT-RSS Discovery (Feeder to QuickTube)
 
-## 1. Överblick
-Ett lättviktigt CLI-program som fungerar som en "Discovery"-modul för YouTube-innehåll. Programmet hämtar metadata via RSS, presenterar en lista över nya videor och delegerar uppspelning/nedladdning till QuickTube.
+## 1. Overview
+A lightweight CLI program acting as a "Discovery" module for YouTube content. The program fetches metadata via RSS, presents a list of new videos, and delegates playback/downloading to QuickTube.
 
-Filosofi: Unix-filosofin – Gör en sak bra och koppla ihop med andra verktyg.
+Philosophy: Unix philosophy – Do one thing well and connect with other tools.
 
-## 2. Nuvarande Status (Implementerat 2025-12-20)
-Programmet är nu fullt fungerande med följande funktioner:
+## 2. Current Status (Implemented 2025-12-20)
+The program is now fully functional with the following features:
 
-*   **Asynkron Hämtning:** Använder `asyncio` och `aiohttp` för att hämta alla RSS-flöden parallellt.
-*   **Prenumerationshantering:** Läser och skriver kanaler till `ytRss.opml`. Stöd för att lägga till och ta bort kanaler direkt i UI:t.
-*   **Databas:** SQLite (`ytrss.db`) används för att:
-    *   Markera videor som **[SEDD]**.
-    *   Cacha videolängder (`duration`) för snabbare laddning.
-*   **Metadata & Längd:** Hämtar videolängd i bakgrunden via `yt-dlp` (asynkront med semaphore-begränsning).
-*   **TUI (Text User Interface):** Byggt med `simple-term-menu`.
-    *   Navigering med piltangenter.
-    *   Sök/Filtrering genom att skriva direkt i menyn.
-    *   Visar kanalnamn, tid, längd och Shorts-markering.
-*   **Shorts-detektering:** Markerar automatiskt videor < 61 sekunder eller med `#shorts`-taggar.
-*   **QuickTube Integration:** Kopierar vald video-URL till systemets urklipp (`wl-copy`) och startar `quicktube`.
+*   **Asynchronous Fetching:** Uses `asyncio` and `aiohttp` to fetch all RSS feeds in parallel.
+*   **Subscription Management:** Reads and writes channels to `ytRss.opml`. Support for adding and removing channels directly in the UI.
+*   **Database:** SQLite (`ytrss.db`) is used to:
+    *   Mark videos as **[WATCHED]**.
+    *   Cache video durations (`duration`) for faster loading.
+*   **Metadata & Duration:** Fetches video duration in the background via `yt-dlp` (asynchronously with semaphore limit).
+*   **TUI (Text User Interface):** Built with `simple-term-menu`.
+    *   Navigation with arrow keys.
+    *   Search/Filtering by typing directly in the menu.
+    *   Shows channel name, time, duration, and Shorts marker.
+*   **Shorts Detection:** Automatically marks videos < 61 seconds or with `#shorts` tags.
+*   **QuickTube Integration:** Copies selected video URL to system clipboard (`wl-copy`) and launches `quicktube`.
 
-## 3. Teknisk Stack
-*   **Språk:** Python 3.13+
-*   **RSS-Parsing:** `feedparser`
-*   **Nätverk:** `aiohttp` (Asynkront HTTP)
+## 3. Technical Stack
+*   **Language:** Python 3.13+
+*   **RSS Parsing:** `feedparser`
+*   **Network:** `aiohttp` (Async HTTP)
 *   **UI:** `simple-term-menu`
-*   **Databas:** `sqlite3` (Inbyggt)
-*   **Externa Beroenden:** `yt-dlp` (för metadata), `quicktube` (för uppspelning), `wl-copy` (för urklipp).
+*   **Database:** `sqlite3` (Built-in)
+*   **External Dependencies:** `yt-dlp` (for metadata), `quicktube` (for playback), `wl-copy` (for clipboard).
 
-## 4. Arbetsflöde
-1.  **Start:** Läser in `ytRss.opml` och startar asynkron hämtning av flöden.
-2.  **Meny:** Visar en huvudmeny med alla kanaler + "Alla videor (Mix)".
-3.  **Lista:** Visar videor sorterade på datum.
-    *   Hämtar videolängd i bakgrunden om det saknas.
-4.  **Val:** Användaren väljer video -> URL kopieras till clipboard -> `quicktube` startas.
-5.  **Historik:** Videon markeras som sedd i databasen.
+## 4. Workflow
+1.  **Start:** Loads `ytRss.opml` and starts asynchronous feed fetching.
+2.  **Menu:** Shows a main menu with all channels + "All videos (Mix)".
+3.  **List:** Shows videos sorted by date.
+    *   Fetches video duration in background if missing.
+4.  **Selection:** User selects video -> URL copied to clipboard -> `quicktube` started.
+5.  **History:** Video is marked as watched in the database.
 
-## 5. Att-göra / Framtida förbättringar
-- [x] Databas: Spara ID på videor som redan visats.
-- [x] OPML-import/export: Fullt stöd via `ytRss.opml`.
-- [x] UI: TUI med piltangenter (`simple-term-menu`).
-- [x] Shorts-detektering: Markeras i listan.
-- [ ] **Shorts-filter:** Möjlighet att *dölja* Shorts helt från listan (toggle).
-- [ ] **Konfigurationsfil:** Flytta hårdkodade sökvägar (DB, OPML) till en config.ini eller liknande.
+## 5. To-Do / Future Improvements
+- [x] Database: Save ID of already viewed videos.
+- [x] OPML import/export: Full support via `ytRss.opml`.
+- [x] UI: TUI with arrow keys (`simple-term-menu`).
+- [x] Shorts detection: Marked in the list.
+- [ ] **Shorts filter:** Ability to *hide* Shorts completely from the list (toggle).
+- [ ] **Configuration file:** Move hardcoded paths (DB, OPML) to a config.ini or similar.

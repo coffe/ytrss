@@ -9,29 +9,26 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from simple_term_menu import TerminalMenu
 
-# Konfiguration
+# Configuration
 QUICKTUBE_CMD = "quicktube"
 CONFIG_DIR = os.path.expanduser("~/.config/ytrss")
 OPML_FILE = os.path.join(CONFIG_DIR, "ytRss.opml")
 DB_FILE = os.path.join(CONFIG_DIR, "ytrss.db")
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
 
-# Globalt tillstånd
+# Create config directory if it doesn't exist
+os.makedirs(CONFIG_DIR, exist_ok=True)
+
+# Global state
 duration_cache = {}
-SHOW_SHORTS = True  # Standard: Visa shorts
+SHOW_SHORTS = True  # Default: Show shorts
 
 def clean_title(text):
-    """Rensar titeln från tecken som kan krångla i terminalen."""
+    """Cleans the title from characters that might cause issues in the terminal."""
     if not text: return ""
-    # Ta bort "Hangul Filler" och andra osynliga tecken som ibland används för tomma titlar
     text = text.replace('\u3164', ' ').replace('\u115f', ' ').replace('\u1160', ' ')
-    
-    # Ersätt generella non-printable tecken
     text = "".join(c if c.isprintable() else " " for c in text)
-    
-    # Komprimera whitespace
     text = " ".join(text.split())
-    
     return text
 
 def init_db():
@@ -53,7 +50,7 @@ def mark_as_seen(video_id, title):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Databasfel: {e}")
+        print(f"Database error: {e}")
 
 def get_seen_videos():
     seen = set()
@@ -95,7 +92,6 @@ def save_metadata(video_id, duration):
         pass
 
 async def get_video_duration(video_url, video_id):
-    """Använder yt-dlp för att hämta längden på en video."""
     if video_id in duration_cache and duration_cache[video_id] != "??:??":
         return duration_cache[video_id]
     
@@ -133,16 +129,16 @@ def load_feeds_from_opml():
             if url:
                 urls.append(url)
     except Exception as e:
-        print(f"Fel vid läsning av OPML: {e}")
+        print(f"Error reading OPML: {e}")
     return urls
 
 def add_feed_to_opml(url):
-    print(f"Verifierar länk: {url} ...")
+    print(f"Verifying link: {url} ...")
     try:
         d = feedparser.parse(url, agent=USER_AGENT)
         channel_title = d.feed.get('title', 'Unknown Channel')
     except Exception as e:
-        print(f"Kunde inte verifiera URL: {e}")
+        print(f"Could not verify URL: {e}")
         return
 
     try:
@@ -163,9 +159,9 @@ def add_feed_to_opml(url):
             'xmlUrl': url
         })
         tree.write(OPML_FILE, encoding='UTF-8', xml_declaration=True)
-        print(f"Lade till: {channel_title}")
+        print(f"Added: {channel_title}")
     except Exception as e:
-        print(f"Kunde inte spara: {e}")
+        print(f"Could not save: {e}")
 
 def remove_channel_ui():
     if not os.path.exists(OPML_FILE): return
@@ -175,15 +171,15 @@ def remove_channel_ui():
     outlines = body.findall('outline')
     
     titles = [node.get('title') or node.get('text') or "Unknown" for node in outlines]
-    titles.append("[Avbryt]")
+    titles.append("[Cancel]")
     
-    menu = TerminalMenu(titles, title="Välj kanal att ta bort:")
+    menu = TerminalMenu(titles, title="Select channel to remove:")
     idx = menu.show()
     
     if idx is not None and idx < len(outlines):
         body.remove(outlines[idx])
         tree.write(OPML_FILE, encoding='UTF-8', xml_declaration=True)
-        print("Kanal borttagen.")
+        print("Channel removed.")
 
 async def fetch_feed(session, url):
     try:
@@ -194,23 +190,19 @@ async def fetch_feed(session, url):
         return None
 
 async def show_video_menu(videos):
-    """Visar en meny med videor och hämtar metadata vid behov."""
     global SHOW_SHORTS
 
-    # Filtrera om SHOW_SHORTS är False
     if not SHOW_SHORTS:
         videos = [v for v in videos if not v.get('is_shorts')]
         if not videos:
-            print("Inga videor att visa (Shorts är dolda).")
-            # Vänta lite så användaren hinner läsa, eller bara returnera
+            print("No videos to show (Shorts are hidden).")
             await asyncio.sleep(1.5)
             return
 
-    # Identifiera videor som saknar duration (vi kollar de 40 första synliga)
     to_fetch = [v for v in videos[:40] if v['duration'] == "??:??"]
     
     if to_fetch:
-        print(f"Hämtar metadata för {len(to_fetch)} videor...")
+        print(f"Fetching metadata for {len(to_fetch)} videos...")
         sem = asyncio.Semaphore(5)
         
         async def fetch_and_update(v):
@@ -220,7 +212,6 @@ async def show_video_menu(videos):
                 if dur != "??:??":
                     try:
                         parts = dur.split(':')
-                        # Om video är under 61 sekunder, markera som shorts
                         if len(parts) == 2:
                             m, s = int(parts[0]), int(parts[1])
                             if m == 0 or (m == 1 and s == 0):
@@ -229,11 +220,10 @@ async def show_video_menu(videos):
 
         await asyncio.gather(*(fetch_and_update(v) for v in to_fetch))
         
-        # Omfiltrering ifall nya shorts upptäcktes efter metadatahämtning
         if not SHOW_SHORTS:
             videos = [v for v in videos if not v.get('is_shorts')]
             if not videos:
-                print("Alla videor var Shorts och filtrerades bort.")
+                print("All videos were Shorts and were filtered out.")
                 await asyncio.sleep(1.5)
                 return
 
@@ -245,18 +235,17 @@ async def show_video_menu(videos):
             shorts_mark = "[SHORTS] " if v.get('is_shorts') else ""
             duration = v.get('duration', '??:??')
             
-            # Sanera titeln
             safe_title = clean_title(v['title'])
             
             entry = f"[{seen_mark}] {dt}  {duration:<6}  {v['channel'][:12]:<12}  {shorts_mark}{safe_title}"
             menu_entries.append(entry)
         
-        menu_entries.append("[Gå tillbaka]")
+        menu_entries.append("[Go back]")
         
-        title_suffix = "(Shorts dolda)" if not SHOW_SHORTS else ""
+        title_suffix = "(Shorts hidden)" if not SHOW_SHORTS else ""
         menu = TerminalMenu(
             menu_entries, 
-            title=f"Välj video {title_suffix} (Sök genom att skriva):"
+            title=f"Select video {title_suffix} (Search by typing):"
         )
         idx = menu.show()
         
@@ -267,29 +256,30 @@ async def show_video_menu(videos):
         mark_as_seen(video['id'], video['title'])
         video['is_seen'] = True
         
-        print(f"Startar QuickTube för: {video['title']}")
+        print(f"Starting QuickTube for: {video['title']}")
         try:
             subprocess.run(["wl-copy", video['link']])
             subprocess.run([QUICKTUBE_CMD])
         except Exception as e:
-            print(f"Fel vid start: {e}")
+            print(f"Error launching: {e}")
 
 async def main_async():
     global duration_cache, SHOW_SHORTS
     init_db()
     duration_cache = get_cached_metadata()
     
+    # Main loop to allow refreshing feeds
     while True:
         feeds = load_feeds_from_opml()
         seen_ids = get_seen_videos()
         
         if not feeds:
-            print("\nInga kanaler hittades. [a] Lägg till.")
+            print("\nNo channels found. [a] Add channel.")
         
         all_videos_by_channel = {}
         all_videos_flat = []
 
-        print("Hämtar flöden...")
+        print("Fetching feeds...")
         async with aiohttp.ClientSession() as session:
             tasks = [fetch_feed(session, url) for url in feeds]
             results = await asyncio.gather(*tasks)
@@ -317,7 +307,6 @@ async def main_async():
                     'duration': duration_cache.get(vid_id, "??:??")
                 }
                 
-                # Om vi vet längden från cache, uppdatera shorts-status direkt
                 if v['duration'] != "??:??":
                      try:
                         parts = v['duration'].split(':')
@@ -336,62 +325,73 @@ async def main_async():
         
         all_videos_flat.sort(key=lambda x: x['published'], reverse=True)
 
-        # Huvudmeny
-        channel_names = sorted(all_videos_by_channel.keys())
-        menu_options = []
+        # Menu logic
+        should_refresh = False
         
-        # Räkna ofiltrerade olästa
-        unread_total = len([v for v in all_videos_flat if not v['is_seen']])
-        
-        # Anpassa texten för filtret
-        filter_status = "DÖLJ" if SHOW_SHORTS else "VISA"
-        
-        menu_options.append(f"--- ALLA VIDEOR ({unread_total} nya) ---")
-        
-        for name in channel_names:
-            unread_count = len([v for v in all_videos_by_channel[name] if not v['is_seen']])
-            menu_options.append(f"{name} ({unread_count})")
+        while not should_refresh:
+            # Update unread count if we marked things as seen
             
-        menu_options.extend([
-            "-" * 30, 
-            "[a] Lägg till kanal", 
-            "[d] Ta bort kanal", 
-            f"[s] {filter_status} Shorts",
-            "[q] Avsluta"
-        ])
-        
-        main_menu = TerminalMenu(menu_options, title=f"YT-RSS Discovery (Shorts: {'PÅ' if SHOW_SHORTS else 'AV'})")
-        choice_idx = main_menu.show()
-        
-        if choice_idx is None: break
-        choice_text = menu_options[choice_idx]
-        
-        if choice_text == "[q] Avsluta":
-            sys.exit()
-        elif choice_text == "[a] Lägg till kanal":
-            url = await asyncio.to_thread(input, "Klistra in RSS-URL: ")
-            url = url.strip()
-            if url: add_feed_to_opml(url)
-        elif choice_text == "[d] Ta bort kanal":
-            remove_channel_ui()
-        elif "[s]" in choice_text:
-            SHOW_SHORTS = not SHOW_SHORTS
-            # Vi loopar om så listan ritas om direkt med nytt filterstatus
-            continue
-        elif "--- ALLA VIDEOR" in choice_text:
-            await show_video_menu(all_videos_flat[:50])
-        elif choice_text.startswith("-"):
-            continue
-        else:
-            found_name = None
+            channel_names = sorted(all_videos_by_channel.keys())
+            menu_options = []
+            
+            unread_total = len([v for v in all_videos_flat if not v['is_seen']])
+            filter_status = "HIDE" if SHOW_SHORTS else "SHOW"
+            
+            menu_options.append(f"--- ALL VIDEOS ({unread_total} new) ---")
+            
             for name in channel_names:
-                if choice_text.startswith(name + " ("):
-                    found_name = name
-                    break
+                unread_count = len([v for v in all_videos_by_channel[name] if not v['is_seen']])
+                menu_options.append(f"{name} ({unread_count})")
+                
+            menu_options.extend([
+                "-" * 30, 
+                "[r] Refresh feeds",
+                "[a] Add channel", 
+                "[d] Remove channel", 
+                f"[s] {filter_status} Shorts",
+                "[q] Quit"
+            ])
             
-            if found_name and found_name in all_videos_by_channel:
-                videos = sorted(all_videos_by_channel[found_name], key=lambda x: x['published'], reverse=True)
-                await show_video_menu(videos)
+            main_menu = TerminalMenu(menu_options, title=f"YT-RSS Discovery (Shorts: {'ON' if SHOW_SHORTS else 'OFF'})")
+            choice_idx = main_menu.show()
+            
+            if choice_idx is None: 
+                sys.exit()
+                
+            choice_text = menu_options[choice_idx]
+            
+            if choice_text == "[q] Quit":
+                sys.exit()
+            elif choice_text == "[r] Refresh feeds":
+                should_refresh = True
+                break
+            elif choice_text == "[a] Add channel":
+                url = await asyncio.to_thread(input, "Paste RSS URL: ")
+                url = url.strip()
+                if url: add_feed_to_opml(url)
+                should_refresh = True # Update after add
+                break
+            elif choice_text == "[d] Remove channel":
+                remove_channel_ui()
+                should_refresh = True # Update after remove
+                break
+            elif "[s]" in choice_text:
+                SHOW_SHORTS = not SHOW_SHORTS
+                continue
+            elif "--- ALL VIDEOS" in choice_text:
+                await show_video_menu(all_videos_flat[:50])
+            elif choice_text.startswith("-"):
+                continue
+            else:
+                found_name = None
+                for name in channel_names:
+                    if choice_text.startswith(name + " ("):
+                        found_name = name
+                        break
+                
+                if found_name and found_name in all_videos_by_channel:
+                    videos = sorted(all_videos_by_channel[found_name], key=lambda x: x['published'], reverse=True)
+                    await show_video_menu(videos)
 
 if __name__ == "__main__":
     try:

@@ -1,55 +1,55 @@
 #!/bin/bash
-set -e  # Avsluta direkt om något steg misslyckas
+set -e  # Exit immediately if a command exits with a non-zero status
 
-# Färger för output
+# Output colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== Bygger YT-RSS Discovery ===${NC}"
+echo -e "${BLUE}=== Building YT-RSS Discovery ===${NC}"
 
-# Funktion för att visa installationshjälp
+# Function to show installation help
 show_install_help() {
-    echo -e "${YELLOW}Tips för installation:${NC}"
+    echo -e "${YELLOW}Installation tips:${NC}"
     echo "  Debian/Ubuntu: sudo apt install python3 python3-venv python3-pip"
     echo "  Fedora:        sudo dnf install python3"
     echo "  Arch Linux:    sudo pacman -S python"
 }
 
-# 1. Kontrollera att Python finns
+# 1. Check if Python exists
 if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}Fel: Python 3 krävs men hittades inte.${NC}"
+    echo -e "${RED}Error: Python 3 is required but not found.${NC}"
     show_install_help
     exit 1
 fi
 
-# 2. Kontrollera att venv-modulen finns (vissa distros separerar den)
+# 2. Check if venv module exists (some distros separate it)
 if ! python3 -c "import venv" &> /dev/null; then
-    echo -e "${RED}Fel: Python venv-modulen saknas.${NC}"
+    echo -e "${RED}Error: Python venv module is missing.${NC}"
     show_install_help
     exit 1
 fi
 
-# 3. Kontrollera att källkoden finns
+# 3. Check if source code exists
 if [ ! -f "ytrss.py" ]; then
-    echo -e "${RED}Fel: Hittar inte ytrss.py. Kör skriptet från projektmappen.${NC}"
+    echo -e "${RED}Error: Could not find ytrss.py. Run the script from the project directory.${NC}"
     exit 1
 fi
 
-# 4. Skapa tillfällig byggmiljö
-echo -e "${BLUE}> Skapar tillfällig virtuell miljö (.build_venv)...${NC}"
+# 4. Create temporary build environment
+echo -e "${BLUE}> Creating temporary virtual environment (.build_venv)...${NC}"
 rm -rf .build_venv
 python3 -m venv .build_venv
 source .build_venv/bin/activate
 
-# 5. Installera beroenden
-echo -e "${BLUE}> Installerar beroenden...${NC}"
+# 5. Install dependencies
+echo -e "${BLUE}> Installing dependencies...${NC}"
 
-# Säkerställ att pip finns
+# Ensure pip exists
 if ! command -v pip &> /dev/null; then
-    echo -e "${RED}Fel: pip hittades inte i den virtuella miljön.${NC}"
+    echo -e "${RED}Error: pip not found in the virtual environment.${NC}"
     show_install_help
     exit 1
 fi
@@ -57,17 +57,17 @@ fi
 pip install --upgrade pip > /dev/null
 pip install feedparser aiohttp simple-term-menu pyinstaller
 
-# 6. Bygg binären med PyInstaller
+# 6. Build binary with PyInstaller
 
-echo -e "${BLUE}> Bygger binärfil med PyInstaller...${NC}"
+echo -e "${BLUE}> Building binary with PyInstaller...${NC}"
 
 pyinstaller --clean --onefile --name ytrss --log-level ERROR ytrss.py
 
 
 
-# 7. Städa upp
+# 7. Clean up
 
-echo -e "${BLUE}> Städar upp byggfiler...${NC}"
+echo -e "${BLUE}> Cleaning up build files...${NC}"
 
 deactivate
 
@@ -79,16 +79,16 @@ rm -f ytrss.spec
 
 
 
-echo -e "${GREEN}=== Bygget klart! ===${NC}"
+echo -e "${GREEN}=== Build complete! ===${NC}"
 
-echo -e "Din körbara fil finns här: ${GREEN}./dist/ytrss${NC}"
+echo -e "Your executable is here: ${GREEN}./dist/ytrss${NC}"
 
 echo ""
 
-echo "Du kan installera den till din bin-mapp med:"
+echo "You can install it to your bin directory with:"
 
 echo "  cp dist/ytrss ~/bin/"
 
-echo "Eller systembrett:"
+echo "Or system-wide:"
 
 echo "  sudo cp dist/ytrss /usr/local/bin/"
