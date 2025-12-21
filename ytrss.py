@@ -52,6 +52,20 @@ def mark_as_seen(video_id, title):
     except Exception as e:
         print(f"Database error: {e}")
 
+def mark_all_as_seen(videos):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        now = datetime.now().isoformat()
+        # Create a list of tuples for executemany
+        data = [(v['id'], v['title'], now) for v in videos]
+        c.executemany("INSERT OR IGNORE INTO seen_videos (video_id, title, seen_date) VALUES (?, ?, ?)", data)
+        conn.commit()
+        conn.close()
+        print(f"Marked {len(videos)} videos as seen.")
+    except Exception as e:
+        print(f"Database error: {e}")
+
 def get_seen_videos():
     seen = set()
     if not os.path.exists(DB_FILE):
@@ -347,7 +361,8 @@ async def main_async():
                 "-" * 30, 
                 "[r] Refresh feeds",
                 "[a] Add channel", 
-                "[d] Remove channel", 
+                "[d] Remove channel",
+                "[m] Mark all as seen",
                 f"[s] {filter_status} Shorts",
                 "[q] Quit"
             ])
@@ -365,6 +380,16 @@ async def main_async():
             elif choice_text == "[r] Refresh feeds":
                 should_refresh = True
                 break
+            elif choice_text == "[m] Mark all as seen":
+                unseen = [v for v in all_videos_flat if not v['is_seen']]
+                if unseen:
+                    print(f"Marking {len(unseen)} videos as seen...")
+                    mark_all_as_seen(unseen)
+                    for v in unseen:
+                        v['is_seen'] = True
+                else:
+                    print("No new videos to mark.")
+                # Continue loop to refresh menu numbers
             elif choice_text == "[a] Add channel":
                 url = await asyncio.to_thread(input, "Paste RSS URL: ")
                 url = url.strip()
