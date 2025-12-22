@@ -21,9 +21,14 @@ ytrss.db-journal
 
 # Backup-filer
 ytrss.py.*
+*_202*-*-*
 
 # System-specifikt
 .DS_Store
 .vscode/
 .idea/
 *.mp4
+
+# Personal / Planning
+todo.md
+förslag_på_tillvägagångsätt.md
