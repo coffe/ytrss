@@ -7,6 +7,7 @@ import sqlite3
 import asyncio
 import aiohttp
 import webbrowser
+import unicodedata
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from simple_term_menu import TerminalMenu
@@ -26,10 +27,34 @@ duration_cache = {}
 SHOW_SHORTS = True  # Default: Show shorts
 
 def clean_title(text):
-    """Cleans the title from characters that might cause issues in the terminal."""
+    """Removes emojis and other characters that cause terminal rendering glitches."""
     if not text: return ""
-    text = text.replace('\u3164', ' ').replace('\u115f', ' ').replace('\u1160', ' ')
-    text = "".join(c if c.isprintable() else " " for c in text)
+    
+    # 1. Normalize characters
+    text = unicodedata.normalize('NFKC', text)
+    
+    # 2. Keep only BMP characters (basic multilingual plane) 
+    # and filter out specific emoji/symbol categories
+    cleaned = []
+    for char in text:
+        if ord(char) > 0xFFFF: # Skip most emojis (non-BMP)
+            continue
+        
+        category = unicodedata.category(char)
+        # Skip symbols, marks, and other potentially problematic categories
+        # So, Cf (Format), Cs (Surrogate), Co (Private), Cn (Unassigned)
+        # And also symbols: So (Other symbol), Sm (Math), Sc (Currency), Sk (Modifier)
+        if category.startswith(('C', 'S')):
+            if char in "$-+/%": # Allow common useful symbols
+                cleaned.append(char)
+            else:
+                cleaned.append(" ")
+        else:
+            cleaned.append(char)
+            
+    text = "".join(cleaned)
+    
+    # 3. Final cleanup of whitespace
     text = " ".join(text.split())
     return text
 
@@ -567,9 +592,14 @@ async def main_async():
             ])
             
             os.system('clear')
+            
+            # Color indicators for the title
+            shorts_status = f"\033[92mON\033[0m" if SHOW_SHORTS else f"\033[91mOFF\033[0m"
+            print(f"YTRSS (Shorts: {shorts_status})")
+            
             main_menu = TerminalMenu(
                 menu_options, 
-                title=f"YT-RSS Discovery (Shorts: {'ON' if SHOW_SHORTS else 'OFF'})",
+                title=None,
                 search_key="/",
                 accept_keys=["enter", "s"]
             )
