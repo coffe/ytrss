@@ -61,7 +61,7 @@ pip install feedparser aiohttp simple-term-menu pyinstaller
 
 echo -e "${BLUE}> Building binary with PyInstaller...${NC}"
 
-pyinstaller --clean --onefile --name ytrss --log-level ERROR ytrss.py
+pyinstaller --clean --onefile --name ytrss --add-data "KEYS.md:." --log-level ERROR ytrss.py
 
 
 

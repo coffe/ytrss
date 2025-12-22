@@ -307,8 +307,18 @@ def remove_channel_ui():
         tree.write(OPML_FILE, encoding='UTF-8', xml_declaration=True)
         print("Channel removed.")
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+
+    return os.path.join(base_path, relative_path)
+
 def show_help():
-    help_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "KEYS.md")
+    help_file = get_resource_path("KEYS.md")
     if os.path.exists(help_file):
         try:
             with open(help_file, 'r') as f:
