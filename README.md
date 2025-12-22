@@ -42,9 +42,11 @@ ytrss
 *   **`Up/Down`**: Navigate the list.
 *   **`Enter`**: Select channel or play video.
 *   **`Type text`**: Filter the list instantly (e.g., type "linux" to see only Linux-related channels/videos).
+*   **`r`**: Refresh feeds.
+*   **`m`**: Mark all videos as seen.
 *   **`s`**: Show/Hide Shorts (toggle).
 *   **`a`**: Add a new RSS link.
-*   **`d`**: Remove a channel.
+*   **`d`**: Delete a channel.
 *   **`q`**: Quit.
 
 ## ⚙️ Configuration

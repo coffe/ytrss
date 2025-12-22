@@ -361,7 +361,7 @@ async def main_async():
                 "-" * 30, 
                 "[r] Refresh feeds",
                 "[a] Add channel", 
-                "[d] Remove channel",
+                "[d] Delete channel",
                 "[m] Mark all as seen",
                 f"[s] {filter_status} Shorts",
                 "[q] Quit"
@@ -396,7 +396,7 @@ async def main_async():
                 if url: add_feed_to_opml(url)
                 should_refresh = True # Update after add
                 break
-            elif choice_text == "[d] Remove channel":
+            elif choice_text == "[d] Delete channel":
                 remove_channel_ui()
                 should_refresh = True # Update after remove
                 break
