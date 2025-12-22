@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 import asyncio
 import aiohttp
+import webbrowser
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from simple_term_menu import TerminalMenu
@@ -316,8 +317,8 @@ def show_help():
             if shutil.which("less"):
                  subprocess.run(["less", help_file])
             else:
-                print("\n" + content)
-                input("\nPress Enter to continue...")
+                print("\n" + content + "\n")
+                input("Press Enter to continue...")
         except Exception as e:
             print(f"Error showing help: {e}")
             input("Press Enter...")
@@ -400,7 +401,7 @@ async def show_video_menu(videos, playlist_name=None):
         menu_entries.append("[Go back]")
         
         title_suffix = "(Shorts hidden)" if not SHOW_SHORTS else ""
-        menu_title = f"Select video {title_suffix} (Press '/' to search, 'l' for Watch Later)"
+        menu_title = f"Select video {title_suffix} (Press '/' to search, 'l' for Watch Later, 'b' for Browser)"
         if playlist_name:
              menu_title += ", 'd' to remove"
 
@@ -409,7 +410,7 @@ async def show_video_menu(videos, playlist_name=None):
             title=menu_title,
             search_key="/",
             cursor_index=current_cursor_index,
-            accept_keys=["enter", "l", "d"]
+            accept_keys=["enter", "l", "d", "b"]
         )
         idx = menu.show()
         
@@ -420,6 +421,14 @@ async def show_video_menu(videos, playlist_name=None):
         current_cursor_index = idx
         video = videos[idx]
         key = menu.chosen_accept_key
+
+        if key == 'b':
+            print(f"Opening in browser: {video['title']}")
+            webbrowser.open(video['link'])
+            mark_as_seen(video['id'], video['title'])
+            video['is_seen'] = True
+            await asyncio.sleep(0.5)
+            continue
 
         if key == 'l':
             if add_to_playlist("Watch Later", video):
@@ -547,6 +556,7 @@ async def main_async():
                 "[q] Quit"
             ])
             
+            os.system('clear')
             main_menu = TerminalMenu(
                 menu_options, 
                 title=f"YT-RSS Discovery (Shorts: {'ON' if SHOW_SHORTS else 'OFF'})",
@@ -604,9 +614,6 @@ async def main_async():
                 remove_channel_ui()
                 should_refresh = True # Update after remove
                 break
-            elif "[s]" in choice_text:
-                SHOW_SHORTS = not SHOW_SHORTS
-                continue
             elif "--- ALL VIDEOS" in choice_text:
                 await show_video_menu(all_videos_flat[:50])
             elif choice_text.startswith("-"):

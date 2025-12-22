@@ -16,6 +16,8 @@
 *   **Up/Down Arrows**: Navigate the list.
 *   **Enter**: Play video (copies link + starts QuickTube).
 *   **`l`**: Add to "Watch Later".
+*   **`b`**: Open video in Web Browser.
 *   **`d`**: Remove video (only works in playlists like Watch Later).
 *   **`/`**: Search/Filter videos (e.g., type "linux").
-*   **Esc**: Go back to main menu.
+*   **`q`**: Go back to main menu.
+
