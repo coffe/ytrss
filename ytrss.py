@@ -2,6 +2,7 @@ import feedparser
 import subprocess
 import sys
 import os
+import shutil
 import sqlite3
 import asyncio
 import aiohttp
@@ -38,6 +39,36 @@ def init_db():
                  (video_id TEXT PRIMARY KEY, title TEXT, seen_date TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS video_metadata
                  (video_id TEXT PRIMARY KEY, duration TEXT)''')
+    
+    # New tables for playlists
+    c.execute('''CREATE TABLE IF NOT EXISTS playlists (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    is_system_list BOOLEAN DEFAULT 0
+                 )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS videos (
+                    video_id TEXT PRIMARY KEY,
+                    title TEXT,
+                    channel TEXT,
+                    url TEXT,
+                    duration TEXT,
+                    is_shorts BOOLEAN,
+                    published_date TEXT,
+                    first_seen TEXT DEFAULT CURRENT_TIMESTAMP
+                 )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS playlist_items (
+                    playlist_id INTEGER NOT NULL,
+                    video_id TEXT NOT NULL,
+                    added_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+                    FOREIGN KEY (video_id) REFERENCES videos(video_id) ON DELETE CASCADE,
+                    PRIMARY KEY (playlist_id, video_id)
+                 )''')
+    
+    # Ensure "Watch Later" exists
+    c.execute("INSERT OR IGNORE INTO playlists (name, is_system_list) VALUES (?, ?)", ("Watch Later", 1))
+    
     conn.commit()
     conn.close()
 
@@ -104,6 +135,86 @@ def save_metadata(video_id, duration):
         conn.close()
     except:
         pass
+
+def add_to_playlist(playlist_name, video):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        
+        # 1. Get playlist id
+        c.execute("SELECT id FROM playlists WHERE name = ?", (playlist_name,))
+        row = c.fetchone()
+        if not row: return False
+        playlist_id = row[0]
+        
+        # 2. Add video to 'videos' table if not exists
+        # Handle 'published' format (struct_time or string)
+        pub_date = ""
+        if video.get('published'):
+            if isinstance(video['published'], (list, tuple)):
+                pub_date = datetime(*video['published'][:6]).isoformat()
+            else:
+                pub_date = str(video['published'])
+
+        c.execute('''INSERT OR REPLACE INTO videos (video_id, title, channel, url, duration, is_shorts, published_date)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                  (video['id'], video['title'], video.get('channel'), video['link'], 
+                   video.get('duration'), video.get('is_shorts', False), pub_date))
+        
+        # 3. Link video to playlist
+        c.execute("INSERT OR IGNORE INTO playlist_items (playlist_id, video_id) VALUES (?, ?)",
+                  (playlist_id, video['id']))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error adding to playlist: {e}")
+        return False
+
+def get_playlist_videos(playlist_name):
+    videos = []
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        conn.row_factory = sqlite3.Row
+        c = conn.cursor()
+        
+        c.execute('''SELECT v.* FROM videos v
+                     JOIN playlist_items pi ON v.video_id = pi.video_id
+                     JOIN playlists p ON pi.playlist_id = p.id
+                     WHERE p.name = ?
+                     ORDER BY pi.added_at DESC''', (playlist_name,))
+        
+        rows = c.fetchall()
+        for row in rows:
+            videos.append({
+                'id': row['video_id'],
+                'title': row['title'],
+                'link': row['url'],
+                'channel': row['channel'],
+                'duration': row['duration'],
+                'is_shorts': bool(row['is_shorts']),
+                'published': row['published_date'],
+                'is_seen': False # Will be updated in show_playlist_ui or main
+            })
+        conn.close()
+    except Exception as e:
+        print(f"Error getting playlist: {e}")
+    return videos
+
+def remove_from_playlist(playlist_name, video_id):
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''DELETE FROM playlist_items 
+                     WHERE video_id = ? AND playlist_id = (SELECT id FROM playlists WHERE name = ?)''',
+                  (video_id, playlist_name))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error removing from playlist: {e}")
+        return False
 
 async def get_video_duration(video_url, video_id):
     if video_id in duration_cache and duration_cache[video_id] != "??:??":
@@ -195,6 +306,25 @@ def remove_channel_ui():
         tree.write(OPML_FILE, encoding='UTF-8', xml_declaration=True)
         print("Channel removed.")
 
+def show_help():
+    help_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "KEYS.md")
+    if os.path.exists(help_file):
+        try:
+            with open(help_file, 'r') as f:
+                content = f.read()
+            # Simple pager using less if available, otherwise print
+            if shutil.which("less"):
+                 subprocess.run(["less", help_file])
+            else:
+                print("\n" + content)
+                input("\nPress Enter to continue...")
+        except Exception as e:
+            print(f"Error showing help: {e}")
+            input("Press Enter...")
+    else:
+        print("Help file KEYS.md not found.")
+        input("Press Enter...")
+
 async def fetch_feed(session, url):
     try:
         async with session.get(url, headers={"User-Agent": USER_AGENT}) as response:
@@ -203,7 +333,7 @@ async def fetch_feed(session, url):
     except:
         return None
 
-async def show_video_menu(videos):
+async def show_video_menu(videos, playlist_name=None):
     global SHOW_SHORTS
 
     if not SHOW_SHORTS:
@@ -241,10 +371,23 @@ async def show_video_menu(videos):
                 await asyncio.sleep(1.5)
                 return
 
+    current_cursor_index = 0
     while True:
         menu_entries = []
         for v in videos:
-            dt = datetime(*v['published'][:6]).strftime("%m-%d %H:%M")
+            # Handle date format (RSS struct_time vs DB string)
+            if isinstance(v['published'], str):
+                try:
+                    dt_obj = datetime.fromisoformat(v['published'])
+                    dt = dt_obj.strftime("%m-%d %H:%M")
+                except:
+                    dt = "??-?? ??:??"
+            else:
+                try:
+                    dt = datetime(*v['published'][:6]).strftime("%m-%d %H:%M")
+                except:
+                    dt = "??-?? ??:??"
+
             seen_mark = "✔" if v['is_seen'] else " "
             shorts_mark = "[SHORTS] " if v.get('is_shorts') else ""
             duration = v.get('duration', '??:??')
@@ -257,16 +400,48 @@ async def show_video_menu(videos):
         menu_entries.append("[Go back]")
         
         title_suffix = "(Shorts hidden)" if not SHOW_SHORTS else ""
+        menu_title = f"Select video {title_suffix} (Press '/' to search, 'l' for Watch Later)"
+        if playlist_name:
+             menu_title += ", 'd' to remove"
+
         menu = TerminalMenu(
             menu_entries, 
-            title=f"Select video {title_suffix} (Search by typing):"
+            title=menu_title,
+            search_key="/",
+            cursor_index=current_cursor_index,
+            accept_keys=["enter", "l", "d"]
         )
         idx = menu.show()
         
         if idx is None or idx == len(videos):
             break
-            
+        
+        # Preserve cursor position
+        current_cursor_index = idx
         video = videos[idx]
+        key = menu.chosen_accept_key
+
+        if key == 'l':
+            if add_to_playlist("Watch Later", video):
+                print(f"Added '{video['title'][:30]}...' to Watch Later.")
+            else:
+                print("Failed to add to Watch Later.")
+            await asyncio.sleep(0.5)
+            continue
+            
+        if key == 'd' and playlist_name:
+            if remove_from_playlist(playlist_name, video['id']):
+                print("Removed from playlist.")
+                del videos[idx]
+                if not videos: break # List empty
+                if current_cursor_index >= len(videos):
+                    current_cursor_index = len(videos) - 1
+            else:
+                print("Could not remove.")
+            await asyncio.sleep(0.5)
+            continue
+
+        # Enter = Play
         mark_as_seen(video['id'], video['title'])
         video['is_seen'] = True
         
@@ -349,8 +524,12 @@ async def main_async():
             menu_options = []
             
             unread_total = len([v for v in all_videos_flat if not v['is_seen']])
-            filter_status = "HIDE" if SHOW_SHORTS else "SHOW"
             
+            # --- PLAYLISTS ---
+            wl_count = len(get_playlist_videos("Watch Later"))
+            menu_options.append("--- PLAYLISTS ---")
+            menu_options.append(f"[1] Watch Later ({wl_count})")
+
             menu_options.append(f"--- ALL VIDEOS ({unread_total} new) ---")
             
             for name in channel_names:
@@ -359,24 +538,49 @@ async def main_async():
                 
             menu_options.extend([
                 "-" * 30, 
+                "[/] Search",
                 "[r] Refresh feeds",
                 "[a] Add channel", 
                 "[d] Delete channel",
                 "[m] Mark all as seen",
-                f"[s] {filter_status} Shorts",
+                "[?] Help",
                 "[q] Quit"
             ])
             
-            main_menu = TerminalMenu(menu_options, title=f"YT-RSS Discovery (Shorts: {'ON' if SHOW_SHORTS else 'OFF'})")
+            main_menu = TerminalMenu(
+                menu_options, 
+                title=f"YT-RSS Discovery (Shorts: {'ON' if SHOW_SHORTS else 'OFF'})",
+                search_key="/",
+                accept_keys=["enter", "s"]
+            )
             choice_idx = main_menu.show()
             
             if choice_idx is None: 
                 sys.exit()
                 
+            if main_menu.chosen_accept_key == "s":
+                SHOW_SHORTS = not SHOW_SHORTS
+                continue
+
             choice_text = menu_options[choice_idx]
             
             if choice_text == "[q] Quit":
                 sys.exit()
+            elif choice_text == "[?] Help":
+                show_help()
+            elif choice_text == "[/] Search":
+                continue # Selecting this just closes the menu, but search is handled by search_key
+            elif choice_text.startswith("[1] Watch Later"):
+                wl_videos = get_playlist_videos("Watch Later")
+                if not wl_videos:
+                    print("Watch Later is empty.")
+                    await asyncio.sleep(1)
+                else:
+                    # Sync seen status
+                    current_seen = get_seen_videos()
+                    for v in wl_videos:
+                        v['is_seen'] = v['id'] in current_seen
+                    await show_video_menu(wl_videos, playlist_name="Watch Later")
             elif choice_text == "[r] Refresh feeds":
                 should_refresh = True
                 break

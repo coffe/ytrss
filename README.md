@@ -7,7 +7,8 @@ Designed to work seamlessly with [QuickTube](https://github.com/coffe/QuickTube)
 ## ✨ Features
 
 *   **Blazing Fast:** Fetches all RSS feeds asynchronously (concurrently) at startup.
-*   **Clean TUI:** Navigate easily with arrow keys and search/filter by typing directly in the menu.
+*   **Watch Later Playlist:** Save videos to a local "Watch Later" list directly from the interface.
+*   **Clean TUI:** Navigate easily with arrow keys and search/filter by pressing `/`.
 *   **Shorts Handling:** Automatically identifies Shorts (< 60s) and lets you toggle their visibility instantly.
 *   **Smart:** Tracks watched videos and caches video durations in a local SQLite database.
 *   **OPML Support:** Easily import/export your subscriptions.
@@ -38,21 +39,32 @@ Start the program:
 ytrss
 ```
 
-### Menu Shortcuts
-*   **`Up/Down`**: Navigate the list.
-*   **`Enter`**: Select channel or play video.
-*   **`Type text`**: Filter the list instantly (e.g., type "linux" to see only Linux-related channels/videos).
+### ⌨️ Shortcuts & Controls
+
+#### Main Menu
+*   **Up/Down Arrows**: Navigate the menu.
+*   **Enter**: Select channel or playlist.
+*   **`/`**: Search/Filter menu items.
 *   **`r`**: Refresh feeds.
-*   **`m`**: Mark all videos as seen.
-*   **`s`**: Show/Hide Shorts (toggle).
-*   **`a`**: Add a new RSS link.
+*   **`a`**: Add new channel (paste RSS URL).
 *   **`d`**: Delete a channel.
+*   **`m`**: Mark all *new* videos as seen.
+*   **`s`**: Show/Hide Shorts (toggle).
+*   **`?`**: Show help within the app.
 *   **`q`**: Quit.
+
+#### Video List
+*   **Up/Down Arrows**: Navigate the list.
+*   **Enter**: Play video (copies link + starts QuickTube).
+*   **`l`**: Add to "Watch Later".
+*   **`d`**: Remove video (only works in playlists like Watch Later).
+*   **`/`**: Search/Filter videos (e.g., type "linux").
+*   **Esc**: Go back to main menu.
 
 ## ⚙️ Configuration
 All data is stored in `~/.config/ytrss/`:
 *   `ytRss.opml`: Your subscriptions.
-*   `ytrss.db`: Database with history and metadata.
+*   `ytrss.db`: Database with history, metadata, and playlists.
 
 ## 🔧 Requirements
 *   Python 3.8+
