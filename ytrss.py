@@ -8,6 +8,7 @@ import asyncio
 import aiohttp
 import webbrowser
 import unicodedata
+import json
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from simple_term_menu import TerminalMenu
@@ -17,6 +18,7 @@ QUICKTUBE_CMD = "quicktube"
 CONFIG_DIR = os.path.expanduser("~/.config/ytrss")
 OPML_FILE = os.path.join(CONFIG_DIR, "ytRss.opml")
 DB_FILE = os.path.join(CONFIG_DIR, "ytrss.db")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
 
 # Create config directory if it doesn't exist
@@ -25,6 +27,53 @@ os.makedirs(CONFIG_DIR, exist_ok=True)
 # Global state
 duration_cache = {}
 SHOW_SHORTS = True  # Default: Show shorts
+
+def load_config():
+    """Loads configuration from JSON file."""
+    default_config = {"show_archive_warning": True}
+    if not os.path.exists(CONFIG_FILE):
+        return default_config
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            return {**default_config, **json.load(f)}
+    except Exception as e:
+        print(f"Error loading config: {e}")
+        return default_config
+
+def save_config(config):
+    """Saves configuration to JSON file."""
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=4)
+    except Exception as e:
+        print(f"Error saving config: {e}")
+
+def show_archive_warning():
+    """Shows a warning that the project is archived."""
+    config = load_config()
+    if not config.get("show_archive_warning", True):
+        return
+
+    title = (
+        "⚠️  ARCHIVED PROJECT ⚠️\n\n"
+        "This version of ytRss is archived and will no longer receive updates.\n"
+        "You are using it as-is. Please enjoy responsibly!\n\n"
+        "You can disable this message in the settings below."
+    )
+    
+    options = [
+        "[Enter] I understand, continue",
+        "[X] I understand, don't show this again"
+    ]
+    
+    menu = TerminalMenu(options, title=title)
+    idx = menu.show()
+    
+    if idx == 1:
+        config["show_archive_warning"] = False
+        save_config(config)
+        print("Settings saved. Warning disabled.")
+        asyncio.sleep(1)
 
 def clean_title(text):
     """Removes emojis and other characters that cause terminal rendering glitches."""
@@ -498,6 +547,10 @@ async def show_video_menu(videos, playlist_name=None):
 
 async def main_async():
     global duration_cache, SHOW_SHORTS
+    
+    # Show archive warning before doing anything else
+    show_archive_warning()
+    
     init_db()
     duration_cache = get_cached_metadata()
     

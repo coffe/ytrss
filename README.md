@@ -1,3 +1,12 @@
+# ⚠️ ARCHIVED PROJECT
+
+**This project is archived and will no longer receive updates.**
+
+*   **Note:** When starting the application, you will see an archive warning.
+*   **Disable Warning:** You can disable this message permanently by selecting "I understand, don't show this again" in the startup menu, or by manually editing `~/.config/ytrss/config.json` and setting `"show_archive_warning": false`.
+
+---
+
 # ytrss 📺
 
 A fast and lightweight TUI tool for browsing and watching YouTube subscriptions via RSS, directly in your terminal. Built for Linux with the Unix philosophy in mind.
